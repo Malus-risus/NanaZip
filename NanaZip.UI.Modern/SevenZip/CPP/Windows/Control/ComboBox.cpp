@@ -10,7 +10,7 @@ namespace NControl {
 LRESULT CComboBox::GetLBText(int index, CSysString &s)
 {
   s.Empty();
-  LRESULT len = GetLBTextLen(index); 
+  LRESULT len = GetLBTextLen(index); // length, excluding the terminating null character
   if (len == CB_ERR)
     return CB_ERR;
   LRESULT len2 = GetLBText(index, s.GetBuf((unsigned)len));
