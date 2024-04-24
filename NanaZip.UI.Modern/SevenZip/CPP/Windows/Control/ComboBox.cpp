@@ -1,58 +1,103 @@
-// Windows/Control/ComboBox.cpp
+/*
+ * PROJECT:   NanaZip
+ * FILE:      AboutDialog.cpp
+ * PURPOSE:   Implementation for About Dialog
+ *
+ * LICENSE:   The MIT License
+ *
+ * DEVELOPER: MouriNaruto (KurikoMouri@outlook.jp)
+ */
 
-#include "StdAfx.h"
-#include "OSVersion.h"
-#include "ComboBox.h"
+#include "AboutDialog.h"
 
-namespace NWindows {
-namespace NControl {
+#include <CommCtrl.h>
+#pragma comment(lib,"comctl32.lib")
 
-LRESULT CComboBox::GetLBText(int index, CSysString &s)
+#include "pch.h"
+#include "AboutPage.h"
+
+void NanaZip::FileManager::AboutDialog::Show(
+    _In_opt_ HWND ParentWindowHandle)
 {
-  s.Empty();
-  LRESULT len = GetLBTextLen(index); // length, excluding the terminating null character
-  if (len == CB_ERR)
-    return CB_ERR;
-  LRESULT len2 = GetLBText(index, s.GetBuf((unsigned)len));
-  if (len2 == CB_ERR)
-    return CB_ERR;
-  if (len > len2)
-    len = len2;
-  s.ReleaseBuf_CalcLen((unsigned)len);
-  return len;
-}
+    winrt::NanaZip::AboutPage XamlWindowContent =
+        winrt::make<winrt::NanaZip::implementation::AboutPage>();
 
-#ifndef _UNICODE
-LRESULT CComboBox::AddString(LPCWSTR s)
-{
-  if (g_IsNT)
-    return SendMsgW(CB_ADDSTRING, 0, (LPARAM)s);
-  return AddString(GetSystemString(s));
-}
+    HWND WindowHandle = ::CreateWindowExW(
+        WS_EX_STATICEDGE | WS_EX_DLGMODALFRAME,
+        L"Mile.Xaml.ContentWindow",
+        nullptr,
+        WS_CAPTION | WS_SYSMENU,
+        CW_USEDEFAULT,
+        0,
+        CW_USEDEFAULT,
+        0,
+        ParentWindowHandle,
+        nullptr,
+        ::GetModuleHandleW(nullptr),
+        winrt::get_abi(XamlWindowContent));
+    if (!WindowHandle)
+    {
+        return;
+    }
 
-LRESULT CComboBox::GetLBText(int index, UString &s)
-{
-  s.Empty();
-  if (g_IsNT)
-  {
-    LRESULT len = SendMsgW(CB_GETLBTEXTLEN, MY__int_TO_WPARAM(index), 0);
-    if (len == CB_ERR)
-      return CB_ERR;
-    LRESULT len2 = SendMsgW(CB_GETLBTEXT, MY__int_TO_WPARAM(index), (LPARAM)s.GetBuf((unsigned)len));
-    if (len2 == CB_ERR)
-      return CB_ERR;
-    if (len > len2)
-      len = len2;
-    s.ReleaseBuf_CalcLen((unsigned)len);
-    return len;
-  }
-  AString sa;
-  LRESULT len = GetLBText(index, sa);
-  if (len == CB_ERR)
-    return CB_ERR;
-  s = GetUnicodeString(sa);
-  return s.Len();
-}
-#endif
+    HMENU MenuHandle = ::GetSystemMenu(WindowHandle, FALSE);
+    if (MenuHandle)
+    {
+        ::RemoveMenu(MenuHandle, 0, MF_SEPARATOR);
+        ::RemoveMenu(MenuHandle, SC_RESTORE, MF_BYCOMMAND);
+        ::RemoveMenu(MenuHandle, SC_SIZE, MF_BYCOMMAND);
+        ::RemoveMenu(MenuHandle, SC_MINIMIZE, MF_BYCOMMAND);
+        ::RemoveMenu(MenuHandle, SC_MAXIMIZE, MF_BYCOMMAND);
+        ::RemoveMenu(MenuHandle, SC_TASKLIST, MF_BYCOMMAND);
+    }
 
-}}
+    const int Width = 600;
+    const int Height = 192 + (32 + 8) * 2;
+
+    UINT DpiValue = ::GetDpiForWindow(WindowHandle);
+
+    int ScaledWidth = ::MulDiv(Width, DpiValue, USER_DEFAULT_SCREEN_DPI);
+    int ScaledHeight = ::MulDiv(Height, DpiValue, USER_DEFAULT_SCREEN_DPI);
+
+    RECT ParentWindowRect;
+    ::GetWindowRect(ParentWindowHandle, &ParentWindowRect);
+
+    int ParentWidth = ParentWindowRect.right - ParentWindowRect.left;
+    int ParentHeight = ParentWindowRect.bottom - ParentWindowRect.top;
+
+    ::SetWindowPos(
+        WindowHandle,
+        nullptr,
+        ParentWindowRect.left + ((ParentWidth - ScaledWidth) / 2),
+        ParentWindowRect.top + ((ParentHeight - ScaledHeight) / 2),
+        ScaledWidth,
+        ScaledHeight,
+        SWP_NOZORDER | SWP_NOACTIVATE);
+    ::ShowWindow(WindowHandle, SW_SHOW);
+    ::UpdateWindow(WindowHandle);
+
+    ::EnableWindow(ParentWindowHandle, FALSE);
+
+    MSG Message;
+    while (::GetMessageW(&Message, nullptr, 0, 0))
+    {
+        // Workaround for capturing Alt+F4 in applications with XAML Islands.
+        // Reference: https://github.com/microsoft/microsoft-ui-xaml/issues/2408
+        if (Message.message == WM_SYSKEYDOWN && Message.wParam == VK_F4)
+        {
+            ::SendMessageW(
+                ::GetAncestor(Message.hwnd, GA_ROOT),
+                Message.message,
+                Message.wParam,
+                Message.lParam);
+
+            continue;
+        }
+
+        ::TranslateMessage(&Message);
+        ::DispatchMessageW(&Message);
+    }
+
+    ::EnableWindow(ParentWindowHandle, TRUE);
+    ::SetActiveWindow(ParentWindowHandle);
+}
