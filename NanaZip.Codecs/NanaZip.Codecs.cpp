@@ -1,4 +1,4 @@
-﻿/*
+/*
  * PROJECT:   Mile.Samples.DynamicLibrary
  * FILE:      NanaZip.Codecs.cpp
  * PURPOSE:   Implementation for NanaZip.Codecs
@@ -9,25 +9,22 @@
  */
 
 #include <Windows.h>
-
 #include <NanaZip.Specification.SevenZip.h>
-
 #include <winrt/Windows.Foundation.h>
 
 struct HasherFactory : public winrt::implements<
     HasherFactory, IHashers>
 {
 public:
-
-    UINT32 STDMETHODCALLTYPE GetNumHashers()
+    UINT32 STDMETHODCALLTYPE GetNumHashers() override
     {
-        return 0;
+        return 0; 
     }
 
     HRESULT STDMETHODCALLTYPE GetHasherProp(
         _In_ UINT32 Index,
         _In_ PROPID PropID,
-        _Out_ LPPROPVARIANT Value)
+        _Out_ LPPROPVARIANT Value) override
     {
         UNREFERENCED_PARAMETER(Index);
         UNREFERENCED_PARAMETER(PropID);
@@ -37,7 +34,7 @@ public:
 
     HRESULT STDMETHODCALLTYPE CreateHasher(
         _In_ UINT32 Index,
-        _Out_ IHasher** Hasher)
+        _Out_ IHasher** Hasher) override
     {
         UNREFERENCED_PARAMETER(Index);
         UNREFERENCED_PARAMETER(Hasher);
@@ -52,15 +49,13 @@ EXTERN_C HRESULT WINAPI GetHashers(
     {
         return E_INVALIDARG;
     }
-
     try
     {
         *Hashers = winrt::make<HasherFactory>().detach();
+        return S_OK;
     }
     catch (...)
     {
         return winrt::to_hresult();
     }
-
-    return S_OK;
 }
